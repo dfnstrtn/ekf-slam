@@ -1,0 +1,13 @@
+How do we procedd ?
+READ IMPLEMENTATION PAPER AND IMPLEMENT
+
+
+X(k+1) = f( X(k) , U(k)  )
+
+
+(x_k, y_k, theta_k)
+(x_fi, y_fi)
+
+
+THINGS TO DO:
+	use the coordinate data from laserscanner to create uniquely identifiable features. such that each feature has a mean x
