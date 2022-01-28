@@ -69,12 +69,6 @@ static mTheta:(usize,usize)= (2,0);
 ///                                        h_matrix,
 ///                                        sigma_bar);       
 ///
-///
-///
-///
-///
-///
-///
 /// ```
 pub struct EKFSlam{
     num_landmarks:usize,
@@ -292,10 +286,11 @@ impl EKFSlam{
         let q_delta_y =q*delta_diff_y;
         let q_root = q.sqrt();
         
+        let num_features = self.feature_size;
         let num_elements = self.feature_size*self.num_landmarks + self.feature_size;
         
         // {H_t}^{i}
-        let mut H_matrix = na::DMatrix::<f32>::zeros(num_elements,num_elements);
+        let mut H_matrix = na::DMatrix::<f32>::zeros(num_features,num_elements);
        
         // Line 16 of the EKF algorithm in thrun 
         // Everything after this is hardcoded for 3 features 
@@ -337,6 +332,10 @@ impl EKFSlam{
     pub fn get_kalman_gain(&mut self, Sigma_bar:&mut na::DMatrix<f32>,H_matrix:&mut na::DMatrix<f32>)->Result<na::DMatrix<f32>,&'static str>{
        let Sigma_bar_shape = Sigma_bar.shape();
        let H_matrix_shape = H_matrix.shape();
+       
+        //FIXME 
+        println!("HMATRIX SHAPE {:?}",H_matrix_shape);
+
        let H_matrix_transpose_shape = (H_matrix_shape.1,H_matrix_shape.0);
        let mut S_Ht = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,H_matrix_transpose_shape.1);
         
@@ -344,10 +343,25 @@ impl EKFSlam{
         
        Sigma_bar.mul_to(&H_matrix.transpose(),&mut S_Ht);
        H_matrix.mul_to(&S_Ht,&mut H_S_Ht);
-        let H_S_Ht_shape = H_S_Ht.shape();
-
+       let H_S_Ht_shape = H_S_Ht.shape();
        let mut H_S_HtpQ = na::DMatrix::<f32>::zeros(H_S_Ht_shape.0,H_S_Ht_shape.1);
+       
+
+        //FIXME 
+        println!("HSHtMATRIX SHAPE {:?}",H_S_Ht_shape);
+        
+       //FIXME
+        Self::print_matrix(String::from("H_S_Ht"),&H_S_Ht);
+        Self::print_matrix(String::from("SENSOR ERROR"),&self.sensor_error_covariance_matrix);
+
+       //error here 
        H_S_Ht.add_to(&self.sensor_error_covariance_matrix,&mut H_S_HtpQ);
+    
+        
+       //FIXME
+       Self::print_matrix(String::from("H_S_HtpQ"),&H_S_HtpQ);
+
+
        let H_S_HtpQinv  = match H_S_HtpQ.try_inverse(){
             Some(a)=>{a}
             None=>{
@@ -358,12 +372,26 @@ impl EKFSlam{
        let H_S_HtpQinv_shape = H_S_HtpQinv.shape();
        
        //can panic!
-       let mut Ht_H_S_HtpQinv = na::DMatrix::<f32>::zeros(H_matrix_shape.0,H_S_HtpQinv_shape.1);
+       let mut Ht_H_S_HtpQinv = na::DMatrix::<f32>::zeros(H_matrix_transpose_shape.0,H_S_HtpQinv_shape.1);
+        
+        // FIXME
+        println!("HS HT Ht PQinv{:?}",H_S_HtpQinv.shape());
+        Self::print_matrix(String::from("INVERSE"),&H_S_HtpQinv);
 
-       H_matrix.mul_to(&H_S_HtpQinv,&mut Ht_H_S_HtpQinv);
-       
+
+       H_matrix.transpose().mul_to(&H_S_HtpQinv,&mut Ht_H_S_HtpQinv);
+        
+        
+
+
+
        let mut Kalman_gain = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,Ht_H_S_HtpQinv.shape().1);
        Sigma_bar.mul_to(&Ht_H_S_HtpQinv,&mut Kalman_gain);
+       
+
+        // FIXME
+        println!("KALMAN GAIN {:?}",Kalman_gain.shape());
+
        Ok(Kalman_gain)
     }
     
@@ -425,26 +453,53 @@ impl EKFSlam{
     pub fn uniquely_identify_observation(&mut self, observation:&SensorData)->IndexType{
         unimplemented!()
     }
+    
+
+    /// Sets the inital sensor error covariance matrix 
+    pub fn set_sensor_error_covariance_matrix(&mut self, mat:na::DMatrix<f32>){
+        if self.sensor_error_covariance_matrix.shape()!=mat.shape(){
+            panic!("MATRIX SIZES DO NOT MATCH")
+        }
+        self.sensor_error_covariance_matrix = mat;
+    }
 
 
+    pub fn set_motion_error_covariance_matrix(&mut self, mat:na::DMatrix<f32>){
+        if self.motion_error_covariance_matrix.shape()!=mat.shape(){
+            panic!("MATRIX SIZES DO NOT MATCH")
+        }
+        self.sensor_error_covariance_matrix = mat;
+    }
+
+    
     //model noise matrix
     //FIXME DISPLAY 
     pub fn display_mean_matrix(&self){
-        self.mean_matrix.row_iter().for_each(|m|{
+        Self::print_matrix( String::from("MEAN MATRIX"),  &self.mean_matrix);
+    }
+
+    // DEBUG
+    pub fn print_matrix(title:String,mat:&na::DMatrix<f32>){
+        println!("-----------{}-------",title);
+        mat.row_iter().for_each(|m|{
             m.iter().for_each(|n|{
-                print!("{}",n);
+                print!(" {} ",n);
             });
             println!();
-        })
-    }
+        });
+        println!("\n\n");
+    } 
 
 }
 
 
 
 
+
+
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     #[test]
     fn slam_test() {
         let base_length = 20.0;
@@ -460,6 +515,25 @@ mod tests {
 
 
         let mut slam = super::EKFSlam::new(10,None);
+        let features= slam.feature_size;
+        let mut sensor_error_covariance_matrix= na::DMatrix::<f32>::zeros(features, features);
+        sensor_error_covariance_matrix[(0,0)] = 20.0;   
+        sensor_error_covariance_matrix[(1,1)] = 10.0;   
+        sensor_error_covariance_matrix[(2,2)] = 5.0;   
+        slam.set_sensor_error_covariance_matrix(sensor_error_covariance_matrix);
+
+
+    
+        let mut motion_error_covariance_matrix= na::DMatrix::<f32>::zeros(features, features);
+        motion_error_covariance_matrix[(0,0)] = 20.0;   
+        motion_error_covariance_matrix[(1,1)] = 10.0;   
+        motion_error_covariance_matrix[(2,2)] = 5.0;   
+        slam.set_motion_error_covariance_matrix(motion_error_covariance_matrix);
+
+
+
+
+
         let mut motion_model = motion_models::odometry_motion_model::OdometryModel::new(base_length);
         
         let g_t = slam.get_dim_corrected_motion_linearizing_matrix(&mut motion_model,odom_l*wheel_radius,odom_r*wheel_radius);
