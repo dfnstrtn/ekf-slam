@@ -1,5 +1,5 @@
 //pub mod differential_drive;
-extern crate nalgebra as na;
+pub extern crate nalgebra as na;
 pub mod ekf_slam;
 #[cfg(test)]
 pub mod tests;
