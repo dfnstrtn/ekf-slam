@@ -1,6 +1,7 @@
 use na;
 use motion_models::base::*;
 
+
 type IndexType=usize;
 
 //FIXME
@@ -71,12 +72,12 @@ static mTheta:(usize,usize)= (2,0);
 ///
 /// ```
 pub struct EKFSlam{
-    num_landmarks:usize,
-    feature_size:usize,
-    mean_matrix:na::DMatrix<f32>,
-    covariance:na::DMatrix<f32>,
-    sensor_error_covariance_matrix:na::DMatrix<f32>,
-    motion_error_covariance_matrix:na::DMatrix<f32>
+    pub num_landmarks:usize,
+    pub feature_size:usize,
+    pub mean_matrix:na::DMatrix<f32>,
+    pub covariance:na::DMatrix<f32>,
+    pub sensor_error_covariance_matrix:na::DMatrix<f32>,
+    pub motion_error_covariance_matrix:na::DMatrix<f32>
 }
 
 
