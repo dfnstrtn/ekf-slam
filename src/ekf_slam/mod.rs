@@ -336,7 +336,7 @@ impl EKFSlam{
        let H_matrix_shape = H_matrix.shape();
        
         //FIXME 
-        println!("HMATRIX SHAPE {:?}",H_matrix_shape);
+        //println!("HMATRIX SHAPE {:?}",H_matrix_shape);
 
        let H_matrix_transpose_shape = (H_matrix_shape.1,H_matrix_shape.0);
        let mut S_Ht = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,H_matrix_transpose_shape.1);
