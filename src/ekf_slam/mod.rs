@@ -82,7 +82,8 @@ pub struct EKFSlam{
 
 
 impl EKFSlam{
-
+    /// size of matrix created by this function is (landmarks + 1)*feature_size 
+    /// where the 1 is for the motion model of the robot.
     pub fn new(landmarks:usize, feature_size:Option<usize>)->EKFSlam{
         let feature_size_value = feature_size.unwrap_or(3);
         let num_elements = landmarks*feature_size_value + feature_size_value;
@@ -490,6 +491,9 @@ impl EKFSlam{
         });
         println!("\n\n");
     } 
+
+    //TODO 
+    // add get x , y trait 
 
 }
 
