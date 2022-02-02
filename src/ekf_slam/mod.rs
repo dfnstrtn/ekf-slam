@@ -350,18 +350,18 @@ impl EKFSlam{
        
 
         //FIXME 
-        println!("HSHtMATRIX SHAPE {:?}",H_S_Ht_shape);
+        //println!("HSHtMATRIX SHAPE {:?}",H_S_Ht_shape);
         
        //FIXME
-        Self::print_matrix(String::from("H_S_Ht"),&H_S_Ht);
-        Self::print_matrix(String::from("SENSOR ERROR"),&self.sensor_error_covariance_matrix);
+        //Self::print_matrix(String::from("H_S_Ht"),&H_S_Ht);
+        //Self::print_matrix(String::from("SENSOR ERROR"),&self.sensor_error_covariance_matrix);
 
        //error here 
        H_S_Ht.add_to(&self.sensor_error_covariance_matrix,&mut H_S_HtpQ);
     
         
        //FIXME
-       Self::print_matrix(String::from("H_S_HtpQ"),&H_S_HtpQ);
+       //Self::print_matrix(String::from("H_S_HtpQ"),&H_S_HtpQ);
 
 
        let H_S_HtpQinv  = match H_S_HtpQ.try_inverse(){
@@ -377,8 +377,8 @@ impl EKFSlam{
        let mut Ht_H_S_HtpQinv = na::DMatrix::<f32>::zeros(H_matrix_transpose_shape.0,H_S_HtpQinv_shape.1);
         
         // FIXME
-        println!("HS HT Ht PQinv{:?}",H_S_HtpQinv.shape());
-        Self::print_matrix(String::from("INVERSE"),&H_S_HtpQinv);
+        //println!("HS HT Ht PQinv{:?}",H_S_HtpQinv.shape());
+        //Self::print_matrix(String::from("INVERSE"),&H_S_HtpQinv);
 
 
        H_matrix.transpose().mul_to(&H_S_HtpQinv,&mut Ht_H_S_HtpQinv);
@@ -392,7 +392,7 @@ impl EKFSlam{
        
 
         // FIXME
-        println!("KALMAN GAIN {:?}",Kalman_gain.shape());
+        //println!("KALMAN GAIN {:?}",Kalman_gain.shape());
 
        Ok(Kalman_gain)
     }
