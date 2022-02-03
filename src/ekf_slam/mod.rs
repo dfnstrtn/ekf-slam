@@ -167,15 +167,17 @@ impl EKFSlam{
        
         // TODO this 
         // hardcoded for 3x3 features 
-        new_mat[(0,0)] = 2.0;
-        new_mat[(0,1)] = 2.0;
-        new_mat[(0,2)] = 2.0;
-        new_mat[(1,0)] = 2.0;
-        new_mat[(1,1)] = 2.0;
-        new_mat[(1,2)] = 2.0;
-        new_mat[(2,0)] = 2.0;
-        new_mat[(2,1)] = 2.0;
-        new_mat[(2,2)] = 2.0;
+        new_mat[(0,0)] = self.motion_error_covariance_matrix[(0,0)];
+        new_mat[(0,1)] = self.motion_error_covariance_matrix[(0,1)];
+        new_mat[(0,2)] = self.motion_error_covariance_matrix[(0,2)];
+        
+        new_mat[(1,0)] = self.motion_error_covariance_matrix[(1,0)];
+        new_mat[(1,1)] = self.motion_error_covariance_matrix[(1,1)];
+        new_mat[(1,2)] = self.motion_error_covariance_matrix[(1,2)];
+        
+        new_mat[(2,0)] = self.motion_error_covariance_matrix[(2,0)];
+        new_mat[(2,1)] = self.motion_error_covariance_matrix[(2,1)];
+        new_mat[(2,2)] = self.motion_error_covariance_matrix[(2,2)];
 
         new_mat 
     }
@@ -248,25 +250,35 @@ impl EKFSlam{
     ///     angle_from_land_mark_relative_to_system_orientatian (phi),
     ///     Signature that identifies the landmark]
     /// ```
-    pub fn sensor_update_observation(&mut self, observation:&SensorData, data_index:IndexType)->(na::DMatrix<f32>,SensorData){
+    pub fn sensor_update_observation(&mut self, observation:&SensorData, data_index:IndexType, found_indices:&mut Vec<bool>)->(na::DMatrix<f32>,SensorData){
         
+        // I have used an ugly hack here
+        // with the used_indices
         let mut sensor_mean = na::DMatrix::<f32>::zeros(self.feature_size,1);
         
+        //FIXME 
+        //this thing is an ugly hack 
+        // if landmark never seen before thingy 
+        // UGLY HACK!!!!!
+        if !found_indices[data_index]{
+            found_indices[data_index] = true;
+            let indices = self.get_observation_matrix_index(data_index);
+            self.mean_matrix[indices.0] = self.mean_matrix[mX] + observation.r*(observation.phi + self.mean_matrix[mTheta]).cos();
+            self.mean_matrix[indices.1] = self.mean_matrix[mY] + observation.r*(observation.phi + self.mean_matrix[mTheta]).sin();
+            self.mean_matrix[indices.2] = 1.0; 
+        }
+        
+
         // FIXME
         // The section from here
         //let data_index = self.uniquely_identify_observation(observation);
-        
-        if let Err(()) = self.is_seen_previously(observation){
-                self.add_new_landmark(observation);       
-        }
-
+        // This part's fucked !!!
+        //if let Err(()) = self.is_seen_previously(observation){
+        //        self.add_new_landmark(observation);       
+        //} 
         let indices = self.get_observation_matrix_index(data_index);
         // to here is extremely problematic and soem design decisiond have to be 
         //taken
-
-
-
-
 
 
         let obs_mean_x = self.mean_matrix[(indices.0,0)];
@@ -281,8 +293,13 @@ impl EKFSlam{
         let q = delta_diff_x.powi(2) + delta_diff_y.powi(2);
         
         let zi_bar_r = q.sqrt();
-        let zi_bar_theta = f32::atan2(delta_diff_y,delta_diff_x) - self.mean_matrix[(2,0)];
-        let signature_mean = 0.0; // FIXME IDK WHAT TO DO THERE
+        let zi_bar_theta = f32::atan2(delta_diff_y,delta_diff_x) - self.mean_matrix[mTheta];
+        let signature_mean = 1.0; // FIXME IDK WHAT TO DO THERE
+        
+        //FIXME 
+        let l = std::line!();
+        println!("[ekf_slam::mod.rs:{}] zi_bar_r:{} | zi_bar_theta:{} | signature_mean:{}",l,zi_bar_r,zi_bar_theta,signature_mean);
+
 
         let q_delta_x =q*delta_diff_x;
         let q_delta_y =q*delta_diff_y;
@@ -324,7 +341,7 @@ impl EKFSlam{
         H_matrix[(2,indices.1)] = 0.;
         H_matrix[(2,indices.2)] = 1.;
         
-        (H_matrix ,SensorDataType::new(zi_bar_r,zi_bar_theta,0.0))
+        (H_matrix ,SensorDataType::new(zi_bar_r,zi_bar_theta,signature_mean))
     }
     
    
