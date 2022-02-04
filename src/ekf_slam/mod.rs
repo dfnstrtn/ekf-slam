@@ -176,31 +176,34 @@ impl EKFSlam{
         new_mat[(2,0)] = self.motion_error_covariance_matrix[(2,0)];
         new_mat[(2,1)] = self.motion_error_covariance_matrix[(2,1)];
         new_mat[(2,2)] = self.motion_error_covariance_matrix[(2,2)];
+        
 
+        let l = std::line!();
+        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | FRF^T]",l),&new_mat); 
         new_mat 
     }
 
     
     // returns sigma_bar
     /// Finds $$\overline{{\Sigma}_t}$$
-    pub fn find_linearized_model_covariance_matrix(&mut self, linearizing_matrix:na::DMatrix<f32>, motion_error_matrix:na::DMatrix<f32>)->na::DMatrix<f32>{
+    pub fn find_linearized_model_covariance_matrix(&mut self, Gt:na::DMatrix<f32>, FRFT:na::DMatrix<f32>)->na::DMatrix<f32>{
     
-        let linearizing_matrix_shape = linearizing_matrix.shape();
-        let mut Gt_S:na::DMatrix<f32> = na::DMatrix::zeros(linearizing_matrix_shape.0,linearizing_matrix_shape.1);
-        let mut Gt_S_GtT:na::DMatrix<f32> = na::DMatrix::zeros(linearizing_matrix_shape.0,linearizing_matrix_shape.1);
+        let Gt_shape = Gt.shape();
+        let mut Gt_S:na::DMatrix<f32> = na::DMatrix::zeros(Gt_shape.0,Gt_shape.1);
+        let mut Gt_S_GtT:na::DMatrix<f32> = na::DMatrix::zeros(Gt_shape.0,Gt_shape.1);
         
         
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | Self.covariance]",l),&self.covariance); 
         
         //zero trail starts her 
-        linearizing_matrix.mul_to(&self.covariance,&mut Gt_S);
-        Gt_S.mul_to(&(linearizing_matrix.transpose()),&mut Gt_S_GtT);
+        Gt.mul_to(&self.covariance,&mut Gt_S);
+        Gt_S.mul_to(&(Gt.transpose()),&mut Gt_S_GtT);
         
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | GEG^T]",l),&Gt_S); 
 
-        Gt_S + Gt_S_GtT 
+        Gt_S_GtT +FRFT
     }
 
    
