@@ -514,7 +514,7 @@ impl EKFSlam{
         if self.motion_error_covariance_matrix.shape()!=mat.shape(){
             panic!("MATRIX SIZES DO NOT MATCH")
         }
-        self.sensor_error_covariance_matrix = mat;
+        self.motion_error_covariance_matrix = mat;
     }
 
     
