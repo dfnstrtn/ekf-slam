@@ -428,10 +428,14 @@ impl EKFSlam{
         z_diff[(0,0)] = observation_sensor.r - observation_estimated.r; 
         z_diff[(1,0)] = observation_sensor.phi - observation_estimated.phi; 
         z_diff[(2,0)] = observation_sensor.s - observation_estimated.s; 
+        
+        
+        dbg!(println!("OBSERVATION ESTIMATED : r:{} | phi:{} | s:{}",observation_estimated.r,observation_estimated.phi,observation_estimated.s));
+        dbg!(println!("OBSERVATION SENSOR : r:{} | phi:{} | s:{}",observation_sensor.r,observation_sensor.phi,observation_sensor.s));
+
         let mut K_mul_z_diff = na::DMatrix::<f32>::zeros(kalman_gain.shape().0,z_diff.shape().1);
         kalman_gain.mul_to(&z_diff,&mut K_mul_z_diff);
-        
-
+    
         //THIS DOES NOT WORK 
         //FIXME this might shit the bed 
         self.mean_matrix.iter_mut().zip(K_mul_z_diff.iter_mut()).for_each(|(m,n)|{
