@@ -347,32 +347,44 @@ impl EKFSlam{
     // FIXME 
     // There may be errors here 
     pub fn get_kalman_gain(&mut self, Sigma_bar:&mut na::DMatrix<f32>,H_matrix:&mut na::DMatrix<f32>)->Result<na::DMatrix<f32>,&'static str>{
-       let Sigma_bar_shape = Sigma_bar.shape();
-       let H_matrix_shape = H_matrix.shape();
+   
+        let Sigma_bar_shape = Sigma_bar.shape();
+        let H_matrix_shape = H_matrix.shape();
        
         //FIXME 
         //println!("HMATRIX SHAPE {:?}",H_matrix_shape);
 
-       let H_matrix_transpose_shape = (H_matrix_shape.1,H_matrix_shape.0);
-       let mut S_Ht = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,H_matrix_transpose_shape.1);
+        let H_matrix_transpose_shape = (H_matrix_shape.1,H_matrix_shape.0);
+        let mut S_Ht = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,H_matrix_transpose_shape.1);
         
-       let mut H_S_Ht = na::DMatrix::<f32>::zeros(H_matrix_shape.0,H_matrix_shape.0);    
+        let mut H_S_Ht = na::DMatrix::<f32>::zeros(H_matrix_shape.0,H_matrix_shape.0);    
         
-       Sigma_bar.mul_to(&H_matrix.transpose(),&mut S_Ht);
-       H_matrix.mul_to(&S_Ht,&mut H_S_Ht);
-       let H_S_Ht_shape = H_S_Ht.shape();
-       let mut H_S_HtpQ = na::DMatrix::<f32>::zeros(H_S_Ht_shape.0,H_S_Ht_shape.1);
+        Sigma_bar.mul_to(&H_matrix.transpose(),&mut S_Ht);
+        
+        
+        let l = std::line!();
+        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | Sigma_bar]",l),&Sigma_bar); 
+        
+
+        let l = std::line!();
+        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | H_matrix]",l),&H_matrix); 
+
+
+
+        H_matrix.mul_to(&S_Ht,&mut H_S_Ht);
+        let H_S_Ht_shape = H_S_Ht.shape();
+        let mut H_S_HtpQ = na::DMatrix::<f32>::zeros(H_S_Ht_shape.0,H_S_Ht_shape.1);
        
 
         //FIXME 
         //println!("HSHtMATRIX SHAPE {:?}",H_S_Ht_shape);
         
-       //FIXME
+        //FIXME
         //Self::print_matrix(String::from("H_S_Ht"),&H_S_Ht);
         //Self::print_matrix(String::from("SENSOR ERROR"),&self.sensor_error_covariance_matrix);
 
-       //error here 
-       H_S_Ht.add_to(&self.sensor_error_covariance_matrix,&mut H_S_HtpQ);
+        //error here 
+        H_S_Ht.add_to(&self.sensor_error_covariance_matrix,&mut H_S_HtpQ);
     
         
        //FIXME
@@ -394,22 +406,13 @@ impl EKFSlam{
         // FIXME
         //println!("HS HT Ht PQinv{:?}",H_S_HtpQinv.shape());
         //Self::print_matrix(String::from("INVERSE"),&H_S_HtpQinv);
-
-
        H_matrix.transpose().mul_to(&H_S_HtpQinv,&mut Ht_H_S_HtpQinv);
-        
-        
-
-
-
        let mut Kalman_gain = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,Ht_H_S_HtpQinv.shape().1);
        Sigma_bar.mul_to(&Ht_H_S_HtpQinv,&mut Kalman_gain);
-       
-
-        // FIXME
-        //println!("KALMAN GAIN {:?}",Kalman_gain.shape());
-
+    // FIXME
+    //println!("KALMAN GAIN {:?}",Kalman_gain.shape());
        Ok(Kalman_gain)
+
     }
     
 
