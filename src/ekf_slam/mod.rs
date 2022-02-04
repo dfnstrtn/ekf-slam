@@ -430,26 +430,22 @@ impl EKFSlam{
         z_diff[(2,0)] = observation_sensor.s - observation_estimated.s; 
         
         let l = std::line!();
-        println!("[ekf_slam::mod.rs:{}] z_diff[(0,0)]:{} ",l,z_diff[(0,0)]);
+        println!("[ekf_slam::mod.rs:{}] z_diff[(0,0)]:{} | z_diff[(0,0)]:{} | z_diff[(0,0)]:{} ",l,z_diff[(0,0)] , z_diff[(1,0)] , z_diff[(2,0)]  );
         
-        let l = std::line!();
-        println!("[ekf_slam::mod.rs:{}] z_diff[(1,0)]:{} ",l,z_diff[(1,0)]);
 
         let l = std::line!();
-        println!("[ekf_slam::mod.rs:{}] z_diff[(2,0)]:{} ",l,z_diff[(2,0)]);
-
-        
+        Self::print_matrix( format!("[ekf_slam::mod.rs:{} Kalman gain]",l),&kalman_gain) ;       
         let mut K_mul_z_diff = na::DMatrix::<f32>::zeros(kalman_gain.shape().0,z_diff.shape().1);
         kalman_gain.mul_to(&z_diff,&mut K_mul_z_diff);
     
         //THIS DOES NOT WORK 
         //FIXME this might shit the bed 
         self.mean_matrix.iter_mut().zip(K_mul_z_diff.iter_mut()).for_each(|(m,n)|{
-            let l = std::line!();
-            println!("[ekf_slam::mod.rs:{}] m+n:{} ",l,*m+*n);
+            //let l = std::line!();
+            //println!("[ekf_slam::mod.rs:{}] m+n:{} ",l,*m+*n);
             
-            let l = std::line!();
-            println!("[ekf_slam::mod.rs:{}] m:{} ",l,*m);
+            //let l = std::line!();
+            //println!("[ekf_slam::mod.rs:{}] m:{} ",l,*m);
             *m = *m+*n; 
         });
     }
@@ -514,7 +510,7 @@ impl EKFSlam{
 
     // DEBUG
     pub fn print_matrix(title:String,mat:&na::DMatrix<f32>){
-        println!("-----------{}-------",title);
+        println!("[DMatrix]-----------------------------[{}]",title);
         mat.row_iter().for_each(|m|{
             m.iter().for_each(|n|{
                 print!(" {} ",n);
