@@ -139,9 +139,7 @@ impl EKFSlam{
     ///
     /// Finds $$G_t$$
     pub fn get_dim_corrected_motion_linearizing_matrix<Mmodel:MotionUpdate2D>(&mut self, model:&mut Mmodel, odometry_l:f32, odometry_r:f32)->na::DMatrix<f32>{
-        let num_elements = self.num_landmarks*self.feature_size + self.feature_size;
-
-        
+        let num_elements = self.num_landmarks*self.feature_size + self.feature_size;        
         let mean_x = self.mean_matrix[mX];
         let mean_y = self.mean_matrix[mY];
         let mean_theta = self.mean_matrix[mTheta];
@@ -433,8 +431,19 @@ impl EKFSlam{
         let mut K_mul_z_diff = na::DMatrix::<f32>::zeros(kalman_gain.shape().0,z_diff.shape().1);
         kalman_gain.mul_to(&z_diff,&mut K_mul_z_diff);
         
+
+        //THIS DOES NOT WORK 
         //FIXME this might shit the bed 
         self.mean_matrix.iter_mut().zip(K_mul_z_diff.iter_mut()).for_each(|(m,n)|{
+           
+    
+        let l = std::line!();
+        println!("[ekf_slam::mod.rs:{}] m+n:{} ",l,*m+*n);
+        
+        let l = std::line!();
+        println!("[ekf_slam::mod.rs:{}] m:{} ",l,*m);
+
+
             *m = *m+*n; 
         });
     }
