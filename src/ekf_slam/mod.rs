@@ -154,39 +154,43 @@ impl EKFSlam{
     }
 
 
-
+    
+    // Do the corrections here
     // TODO 
     // find out how the error matrix works for this
     // add error matrix values 
     /// Returns $${F_{x}}^{T}R_{T}{F_{x}}$$
     pub fn get_dim_corrected_motion_error_matrix(&mut self)->na::DMatrix<f32>{
         let num_elements = self.num_landmarks*self.feature_size + self.feature_size;
-        let mut new_mat = na::DMatrix::<f32>::zeros(num_elements,num_elements);    
+        let mut R_t = na::DMatrix::<f32>::zeros(num_elements,num_elements);    
        
         // TODO this 
         // hardcoded for 3x3 features 
-        new_mat[(0,0)] = self.motion_error_covariance_matrix[(0,0)];
-        new_mat[(0,1)] = self.motion_error_covariance_matrix[(0,1)];
-        new_mat[(0,2)] = self.motion_error_covariance_matrix[(0,2)];
+        R_t[(0,0)] = self.motion_error_covariance_matrix[(0,0)];
+        R_t[(0,1)] = self.motion_error_covariance_matrix[(0,1)];
+        R_t[(0,2)] = self.motion_error_covariance_matrix[(0,2)];
         
-        new_mat[(1,0)] = self.motion_error_covariance_matrix[(1,0)];
-        new_mat[(1,1)] = self.motion_error_covariance_matrix[(1,1)];
-        new_mat[(1,2)] = self.motion_error_covariance_matrix[(1,2)];
+        R_t[(1,0)] = self.motion_error_covariance_matrix[(1,0)];
+        R_t[(1,1)] = self.motion_error_covariance_matrix[(1,1)];
+        R_t[(1,2)] = self.motion_error_covariance_matrix[(1,2)];
         
-        new_mat[(2,0)] = self.motion_error_covariance_matrix[(2,0)];
-        new_mat[(2,1)] = self.motion_error_covariance_matrix[(2,1)];
-        new_mat[(2,2)] = self.motion_error_covariance_matrix[(2,2)];
+        R_t[(2,0)] = self.motion_error_covariance_matrix[(2,0)];
+        R_t[(2,1)] = self.motion_error_covariance_matrix[(2,1)];
+        R_t[(2,2)] = self.motion_error_covariance_matrix[(2,2)];
         
-
+        
+        /*
         let l = std::line!();
-        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | FRF^T]",l),&new_mat); 
-        new_mat 
+        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | FRF^T]",l),&R_t); 
+        */
+
+        R_t
     }
 
     
     // returns sigma_bar
     /// Finds $$\overline{{\Sigma}_t}$$
-    pub fn find_linearized_model_covariance_matrix(&mut self, Gt:na::DMatrix<f32>, FRFT:na::DMatrix<f32>)->na::DMatrix<f32>{
+    pub fn find_linearized_model_covariance_matrix(&mut self, Gt:na::DMatrix<f32>, FTRF:na::DMatrix<f32>)->na::DMatrix<f32>{
     
         let Gt_shape = Gt.shape();
         let mut Gt_S:na::DMatrix<f32> = na::DMatrix::zeros(Gt_shape.0,Gt_shape.1);
@@ -200,10 +204,12 @@ impl EKFSlam{
         Gt.mul_to(&self.covariance,&mut Gt_S);
         Gt_S.mul_to(&(Gt.transpose()),&mut Gt_S_GtT);
         
+        /*
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | GEG^T]",l),&Gt_S); 
-
-        Gt_S_GtT +FRFT
+        */
+        
+        Gt_S_GtT +FTRF
     }
 
    
@@ -281,10 +287,10 @@ impl EKFSlam{
         
 
         // FIXME
-        // The section from here
-        //let data_index = self.uniquely_identify_observation(observation);
-        // This part's fucked !!!
-        //if let Err(()) = self.is_seen_previously(observation){
+        //  The section from here
+        //  let data_index = self.uniquely_identify_observation(observation);
+        //  This part's fucked !!!
+        //  if let Err(()) = self.is_seen_previously(observation){
         //        self.add_new_landmark(observation);       
         //} 
         let indices = self.get_observation_matrix_index(data_index);
@@ -301,16 +307,21 @@ impl EKFSlam{
         
         let delta_diff_x= obs_mean_x - mean_x;
         let delta_diff_y = obs_mean_y - mean_y;
+        
         let q = delta_diff_x.powi(2) + delta_diff_y.powi(2);
+        
         
         let zi_bar_r = q.sqrt();
         let zi_bar_theta = f32::atan2(delta_diff_y,delta_diff_x) - self.mean_matrix[mTheta];
+        
+
         let signature_mean = 1.0; // FIXME IDK WHAT TO DO THERE
         
+        /*
         //FIXME 
         let l = std::line!();
         println!("[ekf_slam::mod.rs:{}] zi_bar_r:{} | zi_bar_theta:{} | signature_mean:{}",l,zi_bar_r,zi_bar_theta,signature_mean);
-
+        */
 
         let q_delta_x =q*delta_diff_x;
         let q_delta_y =q*delta_diff_y;
@@ -323,16 +334,19 @@ impl EKFSlam{
         let mut H_matrix = na::DMatrix::<f32>::zeros(num_features,num_elements);
        
         // Line 16 of the EKF algorithm in thrun 
-        // Everything after this is hardcoded for 3 features 
-        
+        // Everything after this is hardcoded for 3 features  
+        //big error here 
+
+
         // ROW 1 
-        H_matrix[(0,0)] = -delta_diff_x/q_root;   
-        H_matrix[(0,1)] = -delta_diff_y/q_root;   
+        H_matrix[(0,0)] = -delta_diff_x/zi_bar_r;   
+        H_matrix[(0,1)] = -delta_diff_y/zi_bar_r;   
         H_matrix[(0,2)] = 0.; 
         
-        H_matrix[(0,indices.0)] = delta_diff_x/q_root;
-        H_matrix[(0,indices.1)] = delta_diff_y/q_root;
-        
+        H_matrix[(0,indices.0)] = delta_diff_x/zi_bar_r;
+        H_matrix[(0,indices.1)] = delta_diff_y/zi_bar_r;
+        H_matrix[(0,indices.2)] = 0.;
+
 
         // ROW 2
         H_matrix[(1,0)] = delta_diff_y/q;
@@ -341,7 +355,7 @@ impl EKFSlam{
         
         H_matrix[(1,indices.0)] = -delta_diff_y/q;
         H_matrix[(1,indices.1)] = delta_diff_x/q;
-        
+        H_matrix[(1,indices.2)] = 0.;
 
         // ROW 3
         H_matrix[(2,0)] = 0.;
@@ -365,45 +379,30 @@ impl EKFSlam{
         let H_matrix_shape = H_matrix.shape();
        
         //FIXME 
-        //println!("HMATRIX SHAPE {:?}",H_matrix_shape);
-
         let H_matrix_transpose_shape = (H_matrix_shape.1,H_matrix_shape.0);
         let mut S_Ht = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,H_matrix_transpose_shape.1);
-        
         let mut H_S_Ht = na::DMatrix::<f32>::zeros(H_matrix_shape.0,H_matrix_shape.0);    
-        
         Sigma_bar.mul_to(&H_matrix.transpose(),&mut S_Ht);
         
         
+        /*
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | Sigma_bar]",l),&Sigma_bar); 
         
-
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | H_matrix]",l),&H_matrix); 
-
-
+        */
+        
 
         H_matrix.mul_to(&S_Ht,&mut H_S_Ht);
         let H_S_Ht_shape = H_S_Ht.shape();
         let mut H_S_HtpQ = na::DMatrix::<f32>::zeros(H_S_Ht_shape.0,H_S_Ht_shape.1);
-       
-
-        //FIXME 
-        //println!("HSHtMATRIX SHAPE {:?}",H_S_Ht_shape);
         
-        //FIXME
-        //Self::print_matrix(String::from("H_S_Ht"),&H_S_Ht);
-        //Self::print_matrix(String::from("SENSOR ERROR"),&self.sensor_error_covariance_matrix);
 
-        //error here 
         H_S_Ht.add_to(&self.sensor_error_covariance_matrix,&mut H_S_HtpQ);
     
-        
        //FIXME
        //Self::print_matrix(String::from("H_S_HtpQ"),&H_S_HtpQ);
-
-
        let H_S_HtpQinv  = match H_S_HtpQ.try_inverse(){
             Some(a)=>{a}
             None=>{
@@ -412,18 +411,22 @@ impl EKFSlam{
        };
         
        let H_S_HtpQinv_shape = H_S_HtpQinv.shape();
-       
+      
+        
+
+       // Multipy by S_Ht 
+       // error here ?
+       //
        //can panic!
        let mut Ht_H_S_HtpQinv = na::DMatrix::<f32>::zeros(H_matrix_transpose_shape.0,H_S_HtpQinv_shape.1);
-        
-        // FIXME
-        //println!("HS HT Ht PQinv{:?}",H_S_HtpQinv.shape());
-        //Self::print_matrix(String::from("INVERSE"),&H_S_HtpQinv);
+       
+       
        H_matrix.transpose().mul_to(&H_S_HtpQinv,&mut Ht_H_S_HtpQinv);
+       
        let mut Kalman_gain = na::DMatrix::<f32>::zeros(Sigma_bar_shape.0,Ht_H_S_HtpQinv.shape().1);
+       
        Sigma_bar.mul_to(&Ht_H_S_HtpQinv,&mut Kalman_gain);
-    // FIXME
-    //println!("KALMAN GAIN {:?}",Kalman_gain.shape());
+       
        Ok(Kalman_gain)
 
     }
@@ -440,32 +443,35 @@ impl EKFSlam{
                                   kalman_gain:&na::DMatrix<f32>,
                                   observation_estimated:&SensorData,
                                   observation_sensor:&SensorData){
+        
         let mut z_diff = na::DMatrix::<f32>::zeros(self.feature_size,self.feature_size);
         z_diff[(0,0)] = observation_sensor.r - observation_estimated.r; 
         z_diff[(1,0)] = observation_sensor.phi - observation_estimated.phi; 
         z_diff[(2,0)] = observation_sensor.s - observation_estimated.s; 
         
+        /*
         let l = std::line!();
         println!("[ekf_slam::mod.rs:{}] z_diff[(0,0)]:{} | z_diff[(0,0)]:{} | z_diff[(0,0)]:{} ",l,z_diff[(0,0)] , z_diff[(1,0)] , z_diff[(2,0)]  );
-        
-
+        */
+    
+        /*
         let l = std::line!();
         Self::print_matrix( format!("[ekf_slam::mod.rs:{} Kalman gain]",l),&kalman_gain) ;       
+        */
+
+
         let mut K_mul_z_diff = na::DMatrix::<f32>::zeros(kalman_gain.shape().0,z_diff.shape().1);
         kalman_gain.mul_to(&z_diff,&mut K_mul_z_diff);
     
         //THIS DOES NOT WORK 
         //FIXME this might shit the bed 
         self.mean_matrix.iter_mut().zip(K_mul_z_diff.iter_mut()).for_each(|(m,n)|{
-            //let l = std::line!();
-            //println!("[ekf_slam::mod.rs:{}] m+n:{} ",l,*m+*n);
-            
-            //let l = std::line!();
-            //println!("[ekf_slam::mod.rs:{}] m:{} ",l,*m);
             *m = *m+*n; 
         });
     }
     
+
+
 
     // FIXME 
     // this might need fixing 
@@ -477,6 +483,7 @@ impl EKFSlam{
                                         kalman_gain:na::DMatrix<f32>,
                                         H_matrix:na::DMatrix<f32>,
                                         covariance:na::DMatrix<f32>){
+        //possible error here?
         let K_H = kalman_gain*H_matrix;
         let mut I = na::DMatrix::<f32>::identity(K_H.shape().0,K_H.shape().1);
         I = I - K_H;
