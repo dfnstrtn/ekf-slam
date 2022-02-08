@@ -318,7 +318,7 @@ impl EKFSlam{
         // FIXME 
         let zi_bar_theta = delta_diff_y.atan2(delta_diff_x) - self.mean_matrix[mTheta];
         
-        let zi_bar_theta = (delta_diff_y/delta_diff_x).atan();
+        //let zi_bar_theta = (delta_diff_y/delta_diff_x).atan();
 
         let signature_mean = 1.0; // FIXME IDK WHAT TO DO THERE
         
