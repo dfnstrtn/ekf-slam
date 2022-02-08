@@ -314,7 +314,7 @@ impl EKFSlam{
         
         
         let zi_bar_r = q.sqrt();
-        let zi_bar_theta = f32::atan2(delta_diff_y,delta_diff_x) - self.mean_matrix[mTheta];
+        let zi_bar_theta = delta_diff_y.atan2(delta_diff_x) - self.mean_matrix[mTheta];
         
 
         let signature_mean = 1.0; // FIXME IDK WHAT TO DO THERE
