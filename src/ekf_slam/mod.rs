@@ -283,6 +283,8 @@ impl EKFSlam{
             self.mean_matrix[indices.0] = self.mean_matrix[mX] + observation.r*(observation.phi + self.mean_matrix[mTheta]).cos();
             self.mean_matrix[indices.1] = self.mean_matrix[mY] + observation.r*(observation.phi + self.mean_matrix[mTheta]).sin();
             self.mean_matrix[indices.2] = 1.0; 
+            let l = std::line!();
+            println!("[ekf_slam::mod.rs:{}] NEW OBJECT FOUND",l);
         }
         
 
@@ -317,6 +319,12 @@ impl EKFSlam{
 
         let signature_mean = 1.0; // FIXME IDK WHAT TO DO THERE
         
+        
+        let l = std::line!();
+        println!("[ekf_slam::mod.rs:{}] zi_diff_x:{} | zi_diff_y:{} | z_diff_theta:{} ",l,delta_diff_x,delta_diff_y,zi_bar_theta);
+
+
+
         /*
         //FIXME 
         let l = std::line!();
