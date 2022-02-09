@@ -531,15 +531,15 @@ impl EKFSlam{
         z_diff[(1,0)] = observation_sensor.phi - observation_estimated.phi; 
         z_diff[(2,0)] = observation_sensor.s - observation_estimated.s; 
         
-        /*
+        
         let l = std::line!();
-        println!("[ekf_slam::mod.rs:{}] z_diff[(0,0)]:{} | z_diff[(0,0)]:{} | z_diff[(0,0)]:{} ",l,z_diff[(0,0)] , z_diff[(1,0)] , z_diff[(2,0)]  );
-        */
+        println!("[ekf_slam::mod.rs:{}] z_diff[R]:{} | z_diff[phi]:{} | z_diff[s]:{} ",l,z_diff[(0,0)] , z_diff[(1,0)] , z_diff[(2,0)]  );
+        
     
-        /*
+        
         let l = std::line!();
         Self::print_matrix( format!("[ekf_slam::mod.rs:{} Kalman gain]",l),&kalman_gain) ;       
-        */
+        
 
 
         let mut K_mul_z_diff = na::DMatrix::<f32>::zeros(kalman_gain.shape().0,z_diff.shape().1);
