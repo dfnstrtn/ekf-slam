@@ -187,7 +187,7 @@ impl EKFSlam{
                 V[(2,0)] = 0.;
                 V[(2,1)] = 1.;
                 
-                let mut M_Vt = na::DMatrix::<f32>::zeros(3,3); 
+                let mut M_Vt = na::DMatrix::<f32>::zeros(2,3); 
                 M.mul_to(&V.transpose(),&mut M_Vt);
                 let V_M_Vt = V* M_Vt;
                 V_M_Vt
@@ -206,7 +206,7 @@ impl EKFSlam{
                 V[(0,0)] =  -sint;
                 V[(1,0)] =  cost;
                 
-                let mut M_Vt = na::DMatrix::<f32>::zeros(3,3); 
+                let mut M_Vt = na::DMatrix::<f32>::zeros(2,3); 
                 M.mul_to(&V.transpose(),&mut M_Vt);
                 let V_M_Vt = V* M_Vt;
                 V_M_Vt
