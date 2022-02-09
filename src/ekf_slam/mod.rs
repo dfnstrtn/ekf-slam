@@ -157,6 +157,70 @@ impl EKFSlam{
         G_t 
     }
 
+    
+    pub fn get_V_M_Vt(&self,model:&mut motion_models::odometry_motion_model::OdometryModel , odom_l:f32,odom_r:f32, radius:f32, alpha1:f32,alpha2:f32,alpha3:f32, alpha4:f32 )->na::DMatrix<f32>{
+        let distance_l = odom_l*radius;
+        let distance_r = odom_r*radius;
+        let t = self.mean_matrix[mTheta];
+
+        let rang_dist = model.update_get_radius_angle_distance(distance_l,distance_r);
+        match rang_dist{
+            Ok(d) =>{
+                let w = d.alpha;
+                let s = d.s;
+                
+                let mut M = na::DMatrix::<f32>::zeros(2,2);
+                M[(0,0)] = alpha2 * (w*w) + alpha1*(s*s);
+                M[(1,1)] = alpha4 * (w*w) + alpha3*(s*s);
+
+
+                let mut V = na::DMatrix::<f32>::zeros(3,2);
+                let sint = t.sin();
+                let cost = t.cos();
+                let sint_wt = (t+w).sin();
+                let cost_wt = (t+w).cos();
+
+                V[(0,0)] =  (-sint + sint_wt)/w;
+                V[(0,1)] =  s*(sint - sint_wt)/(w*w)  + s*cost_wt/w;
+                V[(1,0)] = (cost - cost_wt)/w;
+                V[(1,1)] = -(s*(cost - cost_wt))/(w*w) + s*sint_wt/w;
+                V[(2,0)] = 0.;
+                V[(2,1)] = 1.;
+                
+                let mut M_Vt = na::DMatrix::<f32>::zeros(3,3); 
+                M.mul_to(&V.transpose(),&mut M_Vt);
+                let V_M_Vt = V* M_Vt;
+                V_M_Vt
+            }
+            Err(e) =>{
+                let s = e.s;
+                
+                let mut M = na::DMatrix::<f32>::zeros(2,2);
+                M[(0,0)] = alpha1*(s*s);
+                M[(1,1)] = alpha3*(s*s);
+
+                let mut V = na::DMatrix::<f32>::zeros(3,2);
+                                
+                let sint = t.sin();
+                let cost = t.cos();
+                V[(0,0)] =  -sint;
+                V[(1,0)] =  cost;
+                
+                let mut M_Vt = na::DMatrix::<f32>::zeros(3,3); 
+                M.mul_to(&V.transpose(),&mut M_Vt);
+                let V_M_Vt = V* M_Vt;
+                V_M_Vt
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 
     
     // Do the corrections here
