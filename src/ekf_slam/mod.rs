@@ -1,6 +1,6 @@
 use na;
 use motion_models::base::*;
-
+use crate::normalize_angle;
 
 type IndexType=usize;
 
@@ -122,13 +122,13 @@ impl EKFSlam{
     pub fn motion_update<Mmodel:MotionUpdate2D>(&mut self,model:&mut Mmodel, odometry_l:f32, odometry_r:f32 ){
         let mean_x = self.mean_matrix[mX];
         let mean_y = self.mean_matrix[mY];
-        let mean_theta = self.mean_matrix[mTheta];
+        let mean_theta = normalize_angle( self.mean_matrix[mTheta] );
         let initial_state = Model2D::new(mean_x,mean_y,mean_theta);
         let updated_coords = model.update_coords_odometry_stateless(initial_state,odometry_l,odometry_r);
         
         self.mean_matrix[mX] = updated_coords.x;
         self.mean_matrix[mY] = updated_coords.y;
-        self.mean_matrix[mTheta] = updated_coords.theta;
+        self.mean_matrix[mTheta] = normalize_angle(updated_coords.theta);
     }
    
     
@@ -142,15 +142,19 @@ impl EKFSlam{
         let num_elements = self.num_landmarks*self.feature_size + self.feature_size;        
         let mean_x = self.mean_matrix[mX];
         let mean_y = self.mean_matrix[mY];
-        let mean_theta = self.mean_matrix[mTheta];
+        let mean_theta = normalize_angle(self.mean_matrix[mTheta]);
         let pos = Model2D::new(mean_x,mean_y,mean_theta);
         let result_jacobian = model.get_jacobian_stateless(pos, odometry_l,odometry_r);
         // hardcoded for 3x3 features     
+       
+        //FIXME 
+        let mut G_t = na::DMatrix::<f32>::identity(num_elements,num_elements);    
+        G_t[(0,2)] = result_jacobian.data[0][2];
+        G_t[(1,2)] = result_jacobian.data[1][2];
         
-        let mut new_mat = na::DMatrix::<f32>::identity(num_elements,num_elements);    
-        new_mat[(0,2)] = result_jacobian.data[0][2];
-        new_mat[(1,2)] = result_jacobian.data[1][2];
-        new_mat 
+        let l = std::line!();
+        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | G_t]",l),&G_t); 
+        G_t 
     }
 
 
@@ -179,10 +183,9 @@ impl EKFSlam{
         R_t[(2,2)] = self.motion_error_covariance_matrix[(2,2)];
         
         
-        /*
         let l = std::line!();
         Self::print_matrix(format!("[ekf_slam::mod.rs:{} | FRF^T]",l),&R_t); 
-        */
+        
 
         R_t
     }
@@ -197,8 +200,8 @@ impl EKFSlam{
         let mut Gt_S_GtT:na::DMatrix<f32> = na::DMatrix::zeros(Gt_shape.0,Gt_shape.1);
         
         
-        let l = std::line!();
-        Self::print_matrix(format!("[ekf_slam::mod.rs:{} | Self.covariance]",l),&self.covariance); 
+        //let l = std::line!();
+        //Self::print_matrix(format!("[ekf_slam::mod.rs:{} | Self.covariance]",l),&self.covariance); 
         
         //zero trail starts her 
         Gt.mul_to(&self.covariance,&mut Gt_S);
@@ -272,7 +275,8 @@ impl EKFSlam{
         // I have used an ugly hack here
         // with the used_indices
         let mut sensor_mean = na::DMatrix::<f32>::zeros(self.feature_size,1);
-        
+       
+        let obs_phi  = normalize_angle(observation.phi);
         //FIXME 
         //this thing is an ugly hack 
         // if landmark never seen before thingy 
@@ -280,8 +284,8 @@ impl EKFSlam{
         if !found_indices[data_index]{
             found_indices[data_index] = true;
             let indices = self.get_observation_matrix_index(data_index);
-            self.mean_matrix[indices.0] = self.mean_matrix[mX] + observation.r*(observation.phi + self.mean_matrix[mTheta]).cos();
-            self.mean_matrix[indices.1] = self.mean_matrix[mY] + observation.r*(observation.phi + self.mean_matrix[mTheta]).sin();
+            self.mean_matrix[indices.0] = self.mean_matrix[mX] + observation.r*(obs_phi + self.mean_matrix[mTheta]).cos();
+            self.mean_matrix[indices.1] = self.mean_matrix[mY] + observation.r*(obs_phi + self.mean_matrix[mTheta]).sin();
             self.mean_matrix[indices.2] = 1.0; 
             let l = std::line!();
             println!("[ekf_slam::mod.rs:{}] NEW OBJECT FOUND",l);
@@ -316,7 +320,7 @@ impl EKFSlam{
         let zi_bar_r = q.sqrt();
         
         // FIXME 
-        let zi_bar_theta = delta_diff_y.atan2(delta_diff_x) - self.mean_matrix[mTheta];
+        let zi_bar_theta = normalize_angle(delta_diff_y.atan2(delta_diff_x) - self.mean_matrix[mTheta]);
         
         //let zi_bar_theta = (delta_diff_y/delta_diff_x).atan();
 

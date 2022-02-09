@@ -4,6 +4,15 @@ pub mod ekf_slam;
 #[cfg(test)]
 pub mod tests;
 
+pub fn normalize_angle(angle:f32)->f32{
+    if angle>std::f32::consts::PI{
+        return -(2.*std::f32::consts::PI - angle);
+    }else if angle< -1.*std::f32::consts::PI{
+        return 2.*std::f32::consts::PI + angle;
+    }else{
+        return angle;
+    }
+}
 
 
 
