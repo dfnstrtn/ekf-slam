@@ -168,7 +168,10 @@ impl EKFSlam{
             Ok(d) =>{
                 let w = d.alpha;
                 let s = d.s;
-                
+                println!("W is {}",w);
+                println!("S is {}",s);
+
+
                 let mut M = na::DMatrix::<f32>::zeros(2,2);
                 M[(0,0)] = alpha2 * (w*w) + alpha1*(s*s);
                 M[(1,1)] = alpha4 * (w*w) + alpha3*(s*s);
