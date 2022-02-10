@@ -219,10 +219,9 @@ impl EKFSlam{
 
 
 
-
-
-
-
+    pub fn get_covariance(&mut self)->na::DMatrix<f32>{
+        self.covariance.clone()
+    }
 
 
     
@@ -561,15 +560,16 @@ impl EKFSlam{
     /// final step 
     /// line 19 of algorithm 
     /// $$\overline{{\Sigma}_t} = (I - {K_t}^{i}{H_t}^{i}){\overline{{\Sigma}_t}}$$
-    pub fn apply_covariance_kalman_gain(&mut self,
+    /// Returns new covariance matrix 
+    pub fn get_covariance_kalman_gain(&mut self,
                                         kalman_gain:na::DMatrix<f32>,
                                         H_matrix:na::DMatrix<f32>,
-                                        covariance:na::DMatrix<f32>){
+                                        covariance:na::DMatrix<f32>)->na::DMatrix<f32>{
         //possible error here?
         let K_H = kalman_gain*H_matrix;
         let mut I = na::DMatrix::<f32>::identity(K_H.shape().0,K_H.shape().1);
         I = I - K_H;
-        self.covariance = I*covariance;
+        I*covariance
     }
 
 
@@ -589,6 +589,13 @@ impl EKFSlam{
         unimplemented!()
     }
     
+
+    /// Set covariance matrix 
+    pub fn set_covariance_matrix(&mut self,covariance:na::DMatrix<f32>){
+        self.covariance = covariance;
+    }
+
+
 
     /// Sets the inital sensor error covariance matrix 
     pub fn set_sensor_error_covariance_matrix(&mut self, mat:na::DMatrix<f32>){
