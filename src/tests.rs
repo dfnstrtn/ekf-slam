@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+/*
 #[test]
 fn slam_test_model() {
     
@@ -59,3 +59,4 @@ fn slam_test_model() {
                                     h_matrix,
                                     sigma_bar);       
     }
+    */
