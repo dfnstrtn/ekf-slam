@@ -28,14 +28,9 @@ pub fn cos(value:Float)->Float{
 
 
 pub fn con_bear(value:Float)->Float{
-    if value>_2PI{
-        value - _2PI
-    }else{
-        if value< -_2PI{
-            return value+_2PI;
-        }
-        value
-    }
+    let mut v = value%_2PI;
+    v = (v + _2PI)%_2PI;
+    v
 }
 
 
@@ -233,11 +228,6 @@ pub fn get_rt_matlab(a:(f32,f32,f32,f32),v:f32,w:f32,Theta:f32,delta_T:f32)->Mat
 
 
 
-
-
-
-
-
 // mean_prev
 // cov_prev
 // cmd_vel
@@ -251,7 +241,7 @@ pub fn ekf_slam_step(
             mean_prev:&mut Matrix,
             cov_prev:&mut Matrix,
             cmd_vel:&mut Matrix,
-            obs_vec:&mut Vec<Matrix>,
+            obs_vec:&mut Vec<(Matrix,usize)>,
             did_see:&mut Vec<bool>
                     ){    
     // From here are initialised values 
@@ -277,30 +267,28 @@ pub fn ekf_slam_step(
 
     let mut vel_update =  vel_motion_update(v,w,delta_T,T_prev);
     let mut mean_t = mat_add(&mean_prev, &mat_mul(&Fx.transpose(),&vel_update)); 
-    
+    mean_t[mT] = con_bear(mean_t[mT]); 
  
     // maybe do R update function here 
     //jacobian update  -O
-    let mtest = 0.001;
+    let mtest = 0.1;
     let Rt =  get_rt((mtest,mtest,mtest,mtest),v,w,T_prev,delta_T);
-    print!("Rt is");
-    print_matrix(&Rt);
 
     let mut jacobian_update =  vel_jacobian_update(v,w,delta_T,T_prev);
     let Gt = mat_add(&I , &mat_mul(&Fx.transpose(),&mat_mul(&jacobian_update,&Fx)));
     let mut cov_t = mat_add( &mat_mul(&Gt,&mat_mul(&cov_prev,&Gt.transpose())), &mat_mul(&Fx.transpose(),&mat_mul(&Rt, &Fx)));
     
- 
-    obs_vec.clear();
+    
+
+    //obs_vec.clear();
+    
+
     // observation integration 
-    for m in obs_vec.iter(){
-        //println!("cov_t : ");
-        //print_matrix(&cov_t);
-        //actual observations
+    for (m,index) in obs_vec.iter(){
         let mut z_obs = Matrix::zeros(num_params_obst,1);
         z_obs[mX] = m[mX];
         z_obs[mY] = con_bear(m[mY]);
-        let index = m[mT] as usize;     // could be an error, you're turning float into int 
+        let index = *index ;     // could be an error, you're turning float into int 
         
         let mat_index = num_params_movt + num_params_obst*index;
         let T_t = mean_t[mT];
@@ -352,31 +340,9 @@ pub fn ekf_slam_step(
         // forgot to multiply by 1/q
         
         let K = mat_mul( &mat_mul(&cov_t,&Ht.transpose()), &mat_add( &mat_mul(&mat_mul(&Ht,&cov_t),&Ht.transpose()) , &Q   ).try_inverse().expect("Unable to invert matrix"));
-       
-        
-        // TODO (jfarhan):Delete
-        let T_Debug = &mat_add(    &mat_mul( &mat_mul(&Ht,&cov_t),&Ht.transpose())  , &Q).try_inverse().expect("Unable to invert matrix"); 
-        
-        // TODO(jfarhan):Delete
-        let K_Debug = mat_mul( &mat_mul(&cov_t,&Ht.transpose()) , &T_Debug );
-        
-        //TODO (jfarhan):Delete
-        let diff_factor = &mat_mul(&K,&mat_sub(&z_obs,&z_t));
-        
-        //println!("DIFF FACTOR");
-        //print_matrix(&diff_factor);
-        
-        // TODO (jfarhan):Delete
-        //println!("K matrix");
-        //print_matrix(&K);
-        print!("H MATRIX");
-        print_matrix(&Ht);
-
-
-
         mean_t = mat_add(&mean_t,&mat_mul(&K,&mat_sub(&z_obs,&z_t)));
-        cov_t = mat_mul(&mat_sub(&I,&mat_mul(&K,&Ht)),&cov_t)
-        // do the rest 
+        cov_t = mat_mul(&mat_sub(&I,&mat_mul(&K,&Ht)),&cov_t);
+        mean_t[mT] = con_bear(mean_t[mT]);
     } 
     *mean_prev = mean_t;
     *cov_prev = cov_t;
@@ -506,14 +472,14 @@ pub mod tests{
             let c  = vel_motion_update_matlab(v_w.0,v_w.1,1.0,coords.2);
             coords.0 = coords.0 + c[mX];
             coords.1 = coords.1 + c[mY];
-            coords.2 = coords.2 + c[mT];
+            coords.2 = con_bear(coords.2 + c[mT]);
             *odom_prev = odom_new;
     }
 
 
     extern crate probability;
     use probability::prelude::*;
-    fn simulate_test_objects(x:f32,y:f32,theta:f32,index:usize) -> Vec<Matrix>{
+    fn simulate_test_objects(x:f32,y:f32,theta:f32,index:usize) -> Vec<(Matrix,usize)>{
         //adding gaussian noise
         let mut source = source::default();
         let distribution = Gaussian::new(0.,0.04);
@@ -539,8 +505,8 @@ pub mod tests{
             z[mT] = m.0 as f32;
             //println!("[{}]INPUT: r:{},phi:{}",index,r,con_bear(phi));
             //println!("[{}]SAMPLED: r:{},phi:{}",index,r_sampled,con_bear(phi_sampled ));
-            z
-        }).collect::<Vec<Matrix>>() 
+            (z,m.0)
+        }).collect::<Vec<(Matrix,usize )>>() 
     }
 
 
@@ -555,8 +521,14 @@ pub mod tests{
         let mut params = EkfSLAMParams::new(num_params_movt,num_params_obst,num_obsts,delta_T);
         
         let num_elements = params.num_elements;
-        
+       
 
+
+        // TODO (jfarhan): These are temporary debug thingies ,so delete 
+        let mut f = std::fs::File::create("velocity_model_test_old.txt").unwrap();
+        let mut writer = std::io::BufWriter::new(&mut f);
+        
+        // useless as usual 
         // Motion model error matrix 
         let mut R = Matrix::identity(num_params_movt,num_params_movt); 
         R[(0,0)] = 0.001;
@@ -567,8 +539,8 @@ pub mod tests{
 
         // Sensor model error matrix
         let mut Q = Matrix::identity(num_params_obst,num_params_obst);
-        Q[(0,0)] = 12.0;
-        Q[(1,1)] = 12.0;
+        Q[(0,0)] = 0.02;
+        Q[(1,1)] = 0.02;
 
 
         let mut mean_prev = Matrix::zeros(num_elements,1);
@@ -584,10 +556,10 @@ pub mod tests{
         
 
         let mut cmd_vel = Matrix::zeros(2,1);
-        let mut obs_vec = (0..3).map(|x|{let x = x as f32;let mut z = Matrix::zeros(3,1);z[mX] = x*2.*5.;z[mY]=x*2.;z[mT]=x;
-            z}).collect::<Vec<Matrix>>();
+        
+        let mut obs_vec:Vec<(Matrix,usize)> = Vec::new(); 
+
         let mut did_see = vec![false;4];
-        obs_vec.clear();
 
 
 
@@ -617,7 +589,8 @@ pub mod tests{
             let angle_abs = con_bear(f32::atan2(y_abs - abs_state.1,x_abs-abs_state.0));
             obs_vec = simulate_test_objects(x_abs,y_abs,angle_abs,index ) ;
             abs_state =(x_abs,y_abs);
-
+            
+            writeln!(writer,"ABS|CALC {}|{}",angle_abs,mean_prev[mT]);
             ekf_slam_step(
                 &mut params,
                 &mut R,
@@ -662,6 +635,18 @@ pub mod tests{
 
         let mat_C = mat_sub(&mat_A,&mat_B); 
         print_matrix(&mat_C);
+    }
+
+    use  std::f32::consts::PI;
+    #[test]
+    fn new_conbear_test(){
+        let mut angle:f32 = 9.57;
+        let _2PI = 2.*PI;
+        angle = angle %_2PI;
+        angle = (angle + _2PI)%_2PI;
+        if angle>PI{
+            angle-=_2PI;
+        }
     }
 }
 
